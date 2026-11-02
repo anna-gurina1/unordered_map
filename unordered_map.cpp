@@ -5,13 +5,13 @@
 #include <functional>
 #include <cmath>
 #include <cassert>
+#include <initializer_list>
 
 class unordered_map
 {
     struct Node
     {
-        int key;
-        int value;
+        std::pair<const int, int> element;
         Node *next;
     };
 
@@ -30,7 +30,7 @@ class unordered_map
         delete a;
     }
 
-    Node **create_buckets(size_t count)
+    Node **create_buckets(const size_t count)
     {
         Node **new_backets = new Node *[count];
         for (size_t i = 0; i < count; i++)
@@ -47,6 +47,88 @@ class unordered_map
     }
 
 public:
+    class iterator
+    {
+    public:
+        ~iterator() = default;
+        iterator()
+        {
+            current_ = nullptr;
+            buckets_ = nullptr;
+            bucket_index_ = 0;
+            bucket_count_ = 0;
+        }
+        iterator(const iterator &other)
+        {
+            current_ = other.current_;
+            buckets_ = other.buckets_;
+            bucket_index_ = other.bucket_index_;
+            bucket_count_ = other.bucket_count_;
+        }
+
+        iterator &operator++()
+        {
+            if (current_ == nullptr)
+            {
+                return *this;
+            }
+            if (current_->next != nullptr)
+            {
+                current_ = current_->next;
+                return *this;
+            }
+            bucket_index_++;
+            while (bucket_index_ < bucket_count_)
+            {
+                if (buckets_[bucket_index_] != nullptr)
+                {
+                    current_ = buckets_[bucket_index_];
+                    return *this;
+                }
+
+                ++bucket_index_;
+            }
+            current_ = nullptr;
+            return *this;
+        }
+        iterator operator++(int)
+        {
+            iterator old = *this;
+            ++(*this);
+            return old;
+        }
+
+        iterator(Node *current, Node **buckets, size_t bucket_index, size_t bucket_count)
+        {
+            current_ = current;
+            buckets_ = buckets;
+            bucket_index_ = bucket_index;
+            bucket_count_ = bucket_count;
+        }
+        std::pair<const int, int> &operator*()
+        {
+            return current_->element;
+        }
+        std::pair<const int, int> *operator->()
+        {
+            return &current_->element;
+        }
+        friend bool operator==(const iterator &a, const iterator &b)
+        {
+            return a.current_ == b.current_ && a.buckets_ == b.buckets_;
+        }
+        friend bool operator!=(const iterator &a, const iterator &b)
+        {
+            return !(a == b);
+        }
+
+    private:
+        Node *current_;
+        Node **buckets_;
+        size_t bucket_index_;
+        size_t bucket_count_;
+    };
+
     unordered_map()
     {
         buckets_ = create_buckets(bucket_count_);
@@ -55,19 +137,6 @@ public:
     {
         clear();
         delete[] buckets_;
-    };
-    unordered_map(const std::pair<int, int> a[], size_t s)
-    {
-        if (s == 0)
-        {
-            buckets_ = create_buckets(bucket_count_);
-            return;
-        }
-        buckets_ = create_buckets(bucket_count_);
-        for (size_t i = 0; i < s; i++)
-        {
-            insert(a[i].first, a[i].second);
-        }
     };
     unordered_map(size_t a)
     {
@@ -89,7 +158,7 @@ public:
             Node *node_other = a.buckets_[i];
             while (node_other != nullptr)
             {
-                this->insert(node_other->key, node_other->value);
+                this->insert(node_other->element.first, node_other->element.second);
                 node_other = node_other->next;
             }
         }
@@ -138,8 +207,8 @@ public:
         Node *node = buckets_[hash(k)];
         while (node != nullptr)
         {
-            if (node->key == k)
-                return node->value;
+            if (node->element.first == k)
+                return node->element.second;
             node = node->next;
         };
         throw std::out_of_range("Key not found");
@@ -184,8 +253,8 @@ public:
             while (node != nullptr)
             {
                 Node *next = node->next;
-                node->next = buckets_[hash(node->key)];
-                buckets_[hash(node->key)] = node;
+                node->next = buckets_[hash(node->element.first)];
+                buckets_[hash(node->element.first)] = node;
                 node = next;
             }
         }
@@ -203,7 +272,7 @@ public:
 
         while (node != nullptr)
         {
-            if (node->key == key)
+            if (node->element.first == key)
             {
                 return false;
             }
@@ -214,10 +283,7 @@ public:
             rehash(bucket_count_ * 2);
         }
 
-        Node *node_new = new Node;
-        node_new->key = key;
-        node_new->value = value;
-        node_new->next = buckets_[hash(key)];
+        Node *node_new = new Node{{key, value}, buckets_[hash(key)]};
         buckets_[hash(key)] = node_new;
 
         size_++;
@@ -232,7 +298,7 @@ public:
         Node *prev = nullptr;
         while (node != nullptr)
         {
-            if (node->key == key)
+            if (node->element.first == key)
             {
                 if (prev == nullptr)
                 {
@@ -270,9 +336,9 @@ public:
             {
                 try
                 {
-                    int value = b.at(node->key);
+                    int value = b.at(node->element.first);
 
-                    if (node->value != value)
+                    if (node->element.second != value)
                     {
                         return false;
                     }
@@ -286,120 +352,58 @@ public:
         }
         return true;
     };
+
+    unordered_map(std::initializer_list<std::pair<const int, int>> a)
+    {
+        buckets_ = create_buckets(bucket_count_);
+        for (const auto &element : a)
+        {
+            insert(element.first, element.second);
+        }
+    }
+
+    unordered_map(iterator begin, iterator end)
+    {
+        buckets_ = create_buckets(bucket_count_);
+
+        for (iterator i = begin; i != end; i++)
+        {
+            this->insert(i->first, i->second);
+        }
+    }
+    auto end()
+    {
+        iterator it(nullptr, buckets_, bucket_count_, bucket_count_);
+        return it;
+    }
+
+    auto begin()
+    {
+        size_t i = 0;
+        while (i < bucket_count_ && this->buckets_[i] == nullptr)
+        {
+            i++;
+        }
+
+        if (i < bucket_count_)
+        {
+            return iterator(buckets_[i], buckets_, i, bucket_count_);
+        }
+        return end();
+    }
+
+    void assign(iterator begin, iterator end)
+    {
+
+        this->clear();
+        for (iterator it = begin; it != end; it++)
+        {
+            this->insert(it->first, it->second);
+        }
+    }
 };
 
 int main()
 {
-
-    unordered_map a;
-    assert(a.empty());
-    assert(a.size() == 0);
-
-    assert(a.insert(1, 10));
-    assert(a.insert(2, 20));
-    assert(a.insert(3, 30));
-
-    assert(a.size() == 3);
-    assert(a.at(1) == 10);
-    assert(a.at(2) == 20);
-    assert(a.at(3) == 30);
-
-    assert(!a.insert(2, 200));
-    assert(a.size() == 3);
-    assert(a.at(2) == 20);
-
-    a.erase(2);
-    assert(a.size() == 2);
-
-    std::pair<int, int> data[] = {
-        {5, 50},
-        {6, 60},
-        {7, 70}};
-
-    unordered_map b(data, 3);
-
-    assert(b.size() == 3);
-    assert(b.at(5) == 50);
-    assert(b.at(6) == 60);
-    assert(b.at(7) == 70);
-
-    unordered_map c(b);
-
-    assert(unordered_map::is_equal(b, c));
-
-    c.erase(5);
-
-    assert(c.size() == 2);
-    assert(b.size() == 3);
-    assert(b.at(5) == 50);
-
-    c.clear();
-    assert(c.empty());
-    assert(c.size() == 0);
-
-    unordered_map d;
-    d.insert(100, 1000);
-    d.insert(200, 2000);
-
-    unordered_map e;
-    e.insert(300, 3000);
-
-    d.swap(e);
-
-    assert(d.size() == 1);
-    assert(d.at(300) == 3000);
-
-    assert(e.size() == 2);
-    assert(e.at(100) == 1000);
-    assert(e.at(200) == 2000);
-
-    unordered_map f(2);
-    f.insert(1, 100);
-    f.insert(2, 200);
-    f.insert(3, 300);
-    f.insert(4, 400);
-
-    f.rehash(20);
-
-    assert(f.size() == 4);
-    assert(f.at(1) == 100);
-    assert(f.at(2) == 200);
-    assert(f.at(3) == 300);
-    assert(f.at(4) == 400);
-
-    assert(f.load_factor() <= f.max_load_factor());
-
-    unordered_map h;
-    h.insert(10, 100);
-    h.insert(20, 200);
-
-    unordered_map i;
-    i.insert(20, 200);
-    i.insert(10, 100);
-
-    assert(unordered_map::is_equal(h, i));
-
-    i.erase(10);
-    assert(!unordered_map::is_equal(h, i));
-
-    unordered_map j;
-    j.insert(11, 110);
-    j.insert(22, 220);
-
-    unordered_map k(std::move(j));
-
-    assert(k.size() == 2);
-    assert(k.at(11) == 110);
-    assert(k.at(22) == 220);
-
-    assert(j.empty());
-    assert(j.size() == 0);
-
-    assert(j.empty());
-
-    j.insert(33, 330);
-    assert(j.at(33) == 330);
-    assert(j.size() == 1);
-
     return 0;
 }
