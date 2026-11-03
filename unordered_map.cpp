@@ -403,7 +403,33 @@ public:
     }
 };
 
-int main()
+     int main(int argc, char const *argv[])
 {
+    unordered_map a{{19, 190}, {47, 470}, {74, 740}, {91, 910}};
+
+    // Iterate through all elements
+    for (auto it = a.begin(); it != a.end(); ++it)
+        std::cout << it->first << ":" << it->second << " ";
+
+    std::cout << '\n';
+
+    // Range constructor
+    unordered_map b(a.begin(), a.end());
+    assert(unordered_map::is_equal(a, b));
+
+    // Range-based for
+    for (auto &&it : b)
+        std::cout << it.first << ":" << it.second << " ";
+
+    std::cout << '\n';
+
+    // Assign from iterator range
+    unordered_map c;
+    c.assign(b.begin(), b.end());
+    assert(unordered_map::is_equal(c, b));
+
+    std::cout << '\n';
+
     return 0;
 }
+
