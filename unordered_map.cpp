@@ -362,7 +362,7 @@ public:
         }
     }
 
-    unordered_map(iterator begin, iterator end)
+    unordered_map(const iterator &begin, const iterator &end)
     {
         buckets_ = create_buckets(bucket_count_);
 
@@ -392,7 +392,7 @@ public:
         return end();
     }
 
-    void assign(iterator begin, iterator end)
+    void assign(const iterator &begin, const iterator &end)
     {
 
         this->clear();
