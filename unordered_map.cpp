@@ -6,6 +6,7 @@
 #include <cmath>
 #include <cassert>
 #include <initializer_list>
+#include <iterator>
 
 class unordered_map
 {
@@ -50,6 +51,12 @@ public:
     class iterator
     {
     public:
+        using iterator_category = std::forward_iterator_tag;
+        using value_type = std::pair<const int, int>;
+        using difference_type = std::ptrdiff_t;
+        using pointer = value_type *;
+        using reference = value_type &;
+
         ~iterator() = default;
         iterator()
         {
@@ -403,7 +410,7 @@ public:
     }
 };
 
-     int main(int argc, char const *argv[])
+int main(int argc, char const *argv[])
 {
     unordered_map a{{19, 190}, {47, 470}, {74, 740}, {91, 910}};
 
@@ -430,6 +437,62 @@ public:
 
     std::cout << '\n';
 
+    // test standart algorithms
+    [](const auto &element)
+    {
+        return element.second > 0;
+    };
+
+    bool all_positive = std::all_of(
+        a.begin(),
+        a.end(),
+        [](const auto &element)
+        {
+            return element.second > 0;
+        });
+
+    std::cout << all_positive << "\n";
+
+    bool any_greater_500 = std::any_of(
+        a.begin(),
+        a.end(),
+        [](const auto &element)
+        {
+            return element.second > 500;
+        });
+
+    std::cout << "Any value is greater than 500: "
+              << any_greater_500 << '\n';
+
+    auto found = std::find_if(
+        a.begin(),
+        a.end(),
+        [](const auto &element)
+        {
+            return element.first == 74;
+        });
+
+    if (found != a.end())
+    {
+        std::cout << "Found: "
+                  << found->first << ":" << found->second << '\n';
+    }
+    else
+    {
+        std::cout << "Element not found\n";
+    }
+
+    // Count values greater than 400
+    auto count = std::count_if(
+        a.begin(),
+        a.end(),
+        [](const auto &element)
+        {
+            return element.second > 400;
+        });
+
+    std::cout << "Values greater than 400: "
+              << count << '\n';
+
     return 0;
 }
-
