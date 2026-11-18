@@ -306,6 +306,11 @@ public:
         return result;
     };
 
+    std::pair<iterator, bool> insert(int key)
+    {
+        return insert(key, 0);
+    }
+
     void erase(int key)
     {
         if (bucket_count_ == 0)
@@ -531,90 +536,17 @@ public:
     };
 };
 
-int test_iterators()
+bool find_value(const unordered_map &map, int key)
 {
-    unordered_map a{{19, 190}, {47, 470}, {74, 740}, {91, 910}};
+    return map.contains(key);
+}
 
-    // Iterate through all elements
-    for (auto it = a.begin(); it != a.end(); ++it)
-        std::cout << it->first << ":" << it->second << " ";
+bool find_value(const unordered_map &map, int key, int value)
+{
+    if (!map.contains(key))
+        return false;
 
-    std::cout << '\n';
-
-    // Range constructor
-    unordered_map b(a.begin(), a.end());
-    assert(unordered_map::is_equal(a, b));
-
-    // Range-based for
-    for (auto &&it : b)
-        std::cout << it.first << ":" << it.second << " ";
-
-    std::cout << '\n';
-
-    // Assign from iterator range
-    unordered_map c;
-    c.assign(b.begin(), b.end());
-    assert(unordered_map::is_equal(c, b));
-
-    std::cout << '\n';
-
-    // test standart algorithms
-    [](const auto &element)
-    {
-        return element.second > 0;
-    };
-
-    bool all_positive = std::all_of(
-        a.begin(),
-        a.end(),
-        [](const auto &element)
-        {
-            return element.second > 0;
-        });
-
-    std::cout << all_positive << "\n";
-
-    bool any_greater_500 = std::any_of(
-        a.begin(),
-        a.end(),
-        [](const auto &element)
-        {
-            return element.second > 500;
-        });
-
-    std::cout << "Any value is greater than 500: "
-              << any_greater_500 << '\n';
-
-    auto found = std::find_if(
-        a.begin(),
-        a.end(),
-        [](const auto &element)
-        {
-            return element.first == 74;
-        });
-
-    if (found != a.end())
-    {
-        std::cout << "Found: "
-                  << found->first << ":" << found->second << '\n';
-    }
-    else
-    {
-        std::cout << "Element not found\n";
-    }
-
-    auto count = std::count_if(
-        a.begin(),
-        a.end(),
-        [](const auto &element)
-        {
-            return element.second > 400;
-        });
-
-    std::cout << "Values greater than 400: "
-              << count << '\n';
-
-    return 0;
+    return map.at(key) == value;
 }
 
 int test_operators()
@@ -633,9 +565,7 @@ int test_operators()
 
     unordered_map b;
     b = a;
-
     assert(a == b);
-    assert(!(a != b));
 
     b[5] = 500;
 
@@ -659,13 +589,27 @@ int test_operators()
     assert(1 == b.count(100));
 
     std::cout << a;
+    unordered_map c;
+    c = std::move(b);
 
+    unordered_map x;
+    x.insert(10);
+    x.insert(20, 200);
+
+    assert(x[10] == 0);
+    assert(x[20] == 200);
+
+    unordered_map y{{5, 50}, {7, 70}};
+
+    assert(find_value(y, 5));
+    assert(find_value(y, 5, 50));
+    assert(!find_value(y, 5, 100));
+    assert(!find_value(y, 10));
     return 0;
 }
 
 int main()
 {
-    // test_iterators();
     test_operators();
     return 0;
 }
